@@ -108,7 +108,6 @@ Function Get-OptionsFromJson {
     $options = Get-Content -LiteralPath $configFile | ConvertFrom-Json
     return $options
 }
-
 Function Get-WorkingFolderListFile {
 
     # Check if folderList.txt is present. 
