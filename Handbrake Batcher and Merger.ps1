@@ -106,25 +106,12 @@ Function Get-OptionsFromJson {
     $options = Get-Content -LiteralPath $optionsFile | ConvertFrom-Json
     return $options
 }
-Function Get-WorkingFolderListFileTxt {
-
-    # Check if folderList.txt is present. 
-    # If not create it
-    # If yes read all folders in array
-    if (!(Test-Path -Path $workingFolderListTxtFile)){
-        $workingFolderListTxtFile = @($PSScriptRoot) | Out-File -FilePath $workingFolderListTxtFile
-    } else {
-        $workingFolderListTxtFile = Get-Content -Path $workingFolderListTxtFile
-    }
-    return $workingFolderListTxtFile
-}
-
 Function Get-WorkingFolderListFileCsv {
 
     if (!(Test-Path -LiteralPath "$PSScriptRoot\configuration")){
         New-Item -Path ("$PSScriptRoot\configuration") -ItemType Directory -Force
     }
-    # Check if folderList.txt is present. 
+    # Check if $workingFolderListCsvFile is present. 
     # If not create it
     # If yes read all folders in array
     if (!(Test-Path -LiteralPath $workingFolderListCsvFile -PathType leaf)){
@@ -144,19 +131,6 @@ Function Get-WorkingFolderListFileCsv {
     }
     return $workingFolderListCsv
 }
-Function Get-WorkingHandbrakeListTxt {
-    # Check if folderList.txt is present. 
-    # If not create it
-    # If yes read all folders in array
-    if (!(Test-Path -Path $workingHandbrakeFileTxt)){
-        #$workingHandbrakeList = "" | Out-File -FilePath $workingHandbrakeFileTxt
-    
-    } else {
-        $workingHandbrakeList = @(Get-Content -Path $workingHandbrakeFileTxt)
-    }
-    return $workingHandbrakeList
-}
-
 Function Get-WorkingHandbrakeListCsv {
     # Check if folderList.txt is present. 
     # If not create it
@@ -169,11 +143,6 @@ Function Get-WorkingHandbrakeListCsv {
         $workingHandbrakeList = Import-Csv -LiteralPath $workingHandbrakeFileCsv
     }
     return $workingHandbrakeList
-}
-
-Function Set-WorkingHandbrakeListTxt ($workingHandbrakeListTxt) {
-    # Write the workingHandbrakeList into file
-    Set-Content $workingHandbrakeFileTxt -value $workingHandbrakeListTxt
 }
 
 Function Add-WorkingHandbrakeListCsv ($workingHandbrakeListCsv, $handbrakeDestinationFile) {
@@ -192,7 +161,7 @@ Function Add-WorkingHandbrakeListCsv ($workingHandbrakeListCsv, $handbrakeDestin
     }
 }
 
-Function Remove-WorkingHandbrakeListCsv ($workingHandbrakeListCsv, $handbrakeDestinationFile) {
+Function Remove-FromWorkingHandbrakeListCsv ($workingHandbrakeListCsv, $handbrakeDestinationFile) {
     # remove the handbrakeDestinationFile from file
     $newWorkingHandbrakeListCsv = $workingHandbrakeListCsv | Where-Object {$_.file -ne $handbrakeDestinationFile}
     if (!$newWorkingHandbrakeListCsv){
@@ -216,7 +185,6 @@ $INFO  = "INFO "
 $optionsFile = "$PSScriptRoot\configuration\options.json"
 $options = Get-OptionsFromJson
 
-#$workingFolderListTxtFile = "$PSScriptRoot\Working Folder List.txt"
 $workingFolderListCsvFile = "$PSScriptRoot\configuration\Working Folder List.csv"
 $workingHandbrakeFileTxt = "$PSScriptRoot\Working Handbrake File List.txt"
 $workingHandbrakeFileCsv = "$PSScriptRoot\configuration\Working Handbrake File List.csv"
@@ -265,11 +233,9 @@ Test-IfAlreadyRunning -ScriptName $ScriptName
 LogWrite $INFO $("(PID=[$PID]) This is the 1st and only instance allowed to run") #this only shows in one instance
 
 # Get workingFolderListTxtFile from folderList.txt
-#$workingFolderListTxt = Get-WorkingFolderListFileTxt
 $workingFolderListCsv = Get-WorkingFolderListFileCsv
 
 # Work on all folder in Working Folder List.txt
-#foreach ($workingFolder in $workingFolderListTxt){
 foreach ($workingFolder in $workingFolderListCsv){
     # if the folder is not there, jump to the next
     if (!(Test-Path -Path $($workingFolder.path))){
@@ -348,7 +314,6 @@ foreach ($workingFolder in $workingFolderListCsv){
         }
 
         LogWrite $DEBUG $("Working on $($file.name)")
-
         
         #Check if handbrake was already launched (only if runHandbrake requested). If found jump to next file
         $handbrakeDestinationFile = "$($file.DirectoryName)\$($file.BaseName)_handbrake.mkv"
@@ -356,7 +321,6 @@ foreach ($workingFolder in $workingFolderListCsv){
 
         ### Check if $handbrakeDestinationFile was pending in previous runs. If not jump to next file
         if ($runHandbrake){
-            #$workingHandbrakeList = @(Get-WorkingHandbrakeListTxt)
             $workingHandbrakeList = Get-WorkingHandbrakeListCsv
             # Search if currently output file is in a previous run list. If yes, we can treat it as unfinished
             # if not and the file is already on disk, jump to next file
@@ -404,11 +368,7 @@ foreach ($workingFolder in $workingFolderListCsv){
         LogWrite $INFO $("Handbrake command: $handbrakeNewcommand")
         if ($runHandbrake){
             if (!$foundWorkingHandbrake){
-                # Using the @ return always an array. If the file has only 1 row return String so it's necessary
-                #$workingHandbrakeList = @(Get-WorkingHandbrakeListTxt)
                 $workingHandbrakeList = Get-WorkingHandbrakeListCsv
-                #$workingHandbrakeList += $handbrakeDestinationFile
-                #Set-WorkingHandbrakeListTxt $workingHandbrakeList
                 Add-WorkingHandbrakeListCsv $workingHandbrakeList $handbrakeDestinationFile
                 LogWrite $DEBUG $("Handbrake file $handbrakeDestinationFile added to $workingHandbrakeFileCsv")
             }
@@ -416,12 +376,9 @@ foreach ($workingFolder in $workingFolderListCsv){
             $handbrakeExitCode = $LASTEXITCODE
             LogWrite $INFO $("Handbrake rc: $handbrakeExitCode of $($file.name)")
             if ($handbrakeExitCode -eq 0){
-                #$workingHandbrakeList = @(Get-WorkingHandbrakeListTxt)
                 $workingHandbrakeList = Get-WorkingHandbrakeListCsv
-                #$workingHandbrakeList = $workingHandbrakeList -ne $handbrakeDestinationFile
                 LogWrite $DEBUG $("Handbrake file $handbrakeDestinationFile removed from $workingHandbrakeFileTxt")
-                #Set-WorkingHandbrakeListTxt $workingHandbrakeList
-                Remove-WorkingHandbrakeListCsv $workingHandbrakeList $handbrakeDestinationFile
+                Remove-FromWorkingHandbrakeListCsv $workingHandbrakeList $handbrakeDestinationFile
                 LogWrite $DEBUG $("Handbrake file $handbrakeDestinationFile removed from $workingHandbrakeFileTxt")
             }
         } else {
