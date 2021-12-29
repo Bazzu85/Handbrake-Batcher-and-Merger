@@ -72,19 +72,19 @@ Function Get-OptionsFromJson {
     #Default options object
     $options = @{
         runOptions= @{
-            debugLog1 = $true
-            runHandbrake=$false
-            runMkvMerge=$false
-            waitSecondsOption=60
+            debugLog = $false
+            runHandbrake = $true
+            runMkvMerge = $true
+            waitSecondsOption = 60
         }
-        handbrakeOptions= @{
+        handbrakeOptions= [ordered]@{
             handbrakePresetToUse=0 #Number of preset to use
             handbrakePresetList=@("Convert to h265 Medium 720p (only video)",
                                 "Convert to h265 Medium (only video)",
                                 "Convert to h265 Medium 480p + audio AAC"
                                 )
             handbrakePresetLocation="C:\Users\elbaz\AppData\Roaming\HandBrake\presets.json"
-            handbrakeCommand='HandBrakeCLI.exe --preset-import-file "||handbrakePresetLocation||" -Z "||handbrakePreset||" -i "||inputFile||" -o "||outputFile||"'
+            handbrakeCommand='HandBrakeCLI.exe --preset-import-file "||handbrakePresetLocation||" -Z "||handbrakePreset||" -i "||inputFile||" -o "||outputFile||" --auto-anamorphic'
         }
         mkvMergeOptions= @{
             mkvMergeCommandToLaunch=0 #Number of command to use
@@ -119,7 +119,7 @@ Function Get-WorkingFolderListFileCsv {
             path = $PSScriptRoot
             handbrakePresetLocation="C:\Users\elbaz\AppData\Roaming\HandBrake\presets.json"
             handbrakePreset="Convert to h265 Medium 720p (only video)"
-            handbrakeCommand='HandBrakeCLI.exe --preset-import-file "||handbrakePresetLocation||" -Z "||handbrakePreset||" -i "||inputFile||" -o "||outputFile||"--auto-anamorphic'
+            handbrakeCommand='HandBrakeCLI.exe --preset-import-file "||handbrakePresetLocation||" -Z "||handbrakePreset||" -i "||inputFile||" -o "||outputFile||" --auto-anamorphic'
             mkvMergeLocation="C:\Program Files\MKVToolNix\mkvmerge.exe"
             mkvMergeCommand='"||mkvMergeLocation||" --ui-language en --output ^"||outputFileName||^" --language 0:und --compression 0:none --no-track-tags  --no-global-tags ^"^(^" ^"||handbrakeFileName||^" ^"^)^" --no-video ^"^(^" ^"||inputFileName||^" ^"^)^"'
             runHandbrake=$false
@@ -176,18 +176,34 @@ Function Remove-FromWorkingHandbrakeListCsv ($workingHandbrakeListCsv, $handbrak
 #Set title
 $host.UI.RawUI.WindowTitle = $MyInvocation.MyCommand.Name.Replace(".ps1","")
 
-Write-Host "Handbrake Batcher and Merger by Bazzu v.2.0"
-$host
+Write-Host "Handbrake Batcher and Merger by Bazzu v.2.1"
+#Write-Host "Powershell infos: "
+#$host
+
 #Set log types
 $DEBUG = "DEBUG"
 $INFO  = "INFO "
 
+#Set file paths
 $optionsFile = "$PSScriptRoot\configuration\options.json"
-$options = Get-OptionsFromJson
-
 $workingFolderListCsvFile = "$PSScriptRoot\configuration\Working Folder List.csv"
 $workingHandbrakeFileTxt = "$PSScriptRoot\Working Handbrake File List.txt"
 $workingHandbrakeFileCsv = "$PSScriptRoot\configuration\Working Handbrake File List.csv"
+
+# if the base configuration files are missing, remember to abort exectution later
+if (!(Test-Path -LiteralPath $optionsFile -PathType leaf) -or !(Test-Path -LiteralPath $workingFolderListCsvFile -PathType leaf)){
+    [bool]$abortExecution = $true
+} else {
+    [bool]$abortExecution = $false
+}
+
+if (!(Test-Path -Path "$PSScriptRoot\configuration")){
+    New-Item -Path ("$PSScriptRoot\configuration") -ItemType Directory -Force
+}
+$options = Get-OptionsFromJson
+
+
+
 $date = Get-Date -Format "yyyyMMdd"
 $logFile = "$PSScriptRoot\log\$($MyInvocation.MyCommand.Name.Replace('.ps1',''))_$date.log"
 if (!(Test-Path -Path $logFile)){
@@ -235,6 +251,11 @@ LogWrite $INFO $("(PID=[$PID]) This is the 1st and only instance allowed to run"
 # Get workingFolderListTxtFile from folderList.txt
 $workingFolderListCsv = Get-WorkingFolderListFileCsv
 
+if ($abortExecution){
+    Write-Host "Generated missing default configuration files in $PSScriptRoot\configuration. Please review it and launch again"
+    pause
+    exit
+}
 # Work on all folder in Working Folder List.txt
 foreach ($workingFolder in $workingFolderListCsv){
     # if the folder is not there, jump to the next
