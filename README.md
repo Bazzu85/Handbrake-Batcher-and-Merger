@@ -87,6 +87,8 @@ mkvMergeCommandToLaunch: the numeric preset to use from the mkvMergeCommandList.
 
 mkvMergeCommandList: The command to launch for execute the MkvMerge.exe conversion. This is a list and is used only the command from the index mkvMergeCommandToLaunch
 
+You can work with my other project https://github.com/Bazzu85/MKVmergeBatcher/releases to extract command to use.
+
 #### Wildcards: 
 
 ||mkvMergeLocation|| -> the mkvmerge location specified in mkvMergeLocation options
