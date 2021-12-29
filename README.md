@@ -13,6 +13,8 @@ With the first launch the script generate the basic configuration files
 After the first launch the script terminate creating only the files specified above. Review it and launch again the script to see it in action.
 Please be aware of what you modify. The script is sensible with the data manually inserted. But just try it.
 
+Note that HandBrake, HandbrakeCLI and MkvMerge need to be available on the system
+
 ## Allowed instances
 
 Only 1 instance at time of the script is allowed (powershell.exe or pwsh.exe with the script name).
@@ -85,4 +87,13 @@ mkvMergeCommandToLaunch: the numeric preset to use from the mkvMergeCommandList.
 
 mkvMergeCommandList: The command to launch for execute the MkvMerge.exe conversion. This is a list and is used only the command from the index mkvMergeCommandToLaunch
 
+#### Wildcards: 
+
+||mkvMergeLocation|| -> the mkvmerge location specified in mkvMergeLocation options
+
+||outputFileName|| -> the output file name of the conversion. is composed or FileFolder\tmp\FileName.mkv
+
+||handbrakeFileName|| -> the converted handbrake file
+
+||inputFileName|| -> the input file from the execution. The same used by handbrakeCLI
 
