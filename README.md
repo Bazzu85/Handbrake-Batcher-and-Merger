@@ -25,11 +25,18 @@ The script automatically wait for the instance to end to run itself
 
 Logs are stored in .\log folder
 
+## Automatically discarded files
+
+If the script have to work on a FileName with already an "FileName_handbrake.mkv" generated (maybe from another run), this file is automatically threated as already elaborated.
+When running the Handbrake command the actual "FileName_handbrake.mkv" is added to a csv and removed after the correct conversion. If the script is interrupted during this conversion, the next run will retry the file as already in csv exclusion list.
+
 ## Options
 
 If the same option is in Working Folder List.csv is threated as a per-folder options and is applied only to that folder. 
 
 If not specified the global options.json option is applied
+
+Please be aware in the options.json that some characters need to be specified escaped (with a preceding '\')
 
 ### runOptions
 
@@ -40,4 +47,28 @@ debugLog: activate debug log (true/false).
 runHandbrake: tells the script to run the HandbrakeCLI command for every accepted file
 
 runMkvMerge: tells the script to run the MkvMerge command for every accepted file
+
+### fileFolderOptions
+
+excludeFileList: specify the mask to exclude files from recursive elaboration. Faster than excludeFileFolderList option.
+
+excludeFileFolderList: specify the mask to exclude files and folders from recursive elaboration. 
+The option is primary for folders that cannot specified in excludeFileList
+
+includeList: specify the mask to include files from recursive elaboration
+
+### handbrakeOptions
+
+handbrakeCommand: command to launch for executing handbrakeCLI conversions.
+
+#### Wildcards: 
+
+||handbrakePresetLocation|| -> the preset json location in your system
+
+||handbrakePreset|| -> the preset to use
+
+||inputFile|| -> the input file that's the script is running on
+
+||outputFile|| -> the output file converted by HandbrakeCLI. this is generated with the input file name, appending "_handrake.mkv".
+
 
