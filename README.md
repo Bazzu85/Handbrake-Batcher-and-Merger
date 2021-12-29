@@ -59,7 +59,13 @@ includeList: specify the mask to include files from recursive elaboration
 
 ### handbrakeOptions
 
-handbrakeCommand: command to launch for executing handbrakeCLI conversions.
+handbrakePresetLocation: the location of preset json
+
+handbrakePresetList: the preset name list to work on
+
+handbrakePresetToUse: the numeric preset to use from the handbrakePresetList. Starts with zero
+
+handbrakeCommand: command to launch for execute handbrakeCLI conversion.
 
 #### Wildcards: 
 
@@ -70,5 +76,13 @@ handbrakeCommand: command to launch for executing handbrakeCLI conversions.
 ||inputFile|| -> the input file that's the script is running on
 
 ||outputFile|| -> the output file converted by HandbrakeCLI. this is generated with the input file name, appending "_handrake.mkv".
+
+### mkvMergeOptions
+
+mkvMergeLocation: the MkvMerge.exe file location
+
+mkvMergeCommandToLaunch: the numeric preset to use from the mkvMergeCommandList. Starts with zero
+
+mkvMergeCommandList: The command to launch for execute the MkvMerge.exe conversion. This is a list and is used only the command from the index mkvMergeCommandToLaunch
 
 
