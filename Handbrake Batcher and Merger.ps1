@@ -119,7 +119,7 @@ Function Get-WorkingFolderListFileCsv {
             path = $PSScriptRoot
             handbrakePresetLocation="C:\Users\elbaz\AppData\Roaming\HandBrake\presets.json"
             handbrakePreset="Convert to h265 Medium 720p (only video)"
-            handbrakeCommand='HandBrakeCLI.exe --preset-import-file "||handbrakePresetLocation||" -Z "||handbrakePreset||" -i "||inputFile||" -o "||outputFile||" --non-anamorphic'
+            handbrakeCommand='HandBrakeCLI.exe --preset-import-file "||handbrakePresetLocation||" -Z "||handbrakePreset||" -i "||inputFile||" -o "||outputFile||"--auto-anamorphic'
             mkvMergeLocation="C:\Program Files\MKVToolNix\mkvmerge.exe"
             mkvMergeCommand='"||mkvMergeLocation||" --ui-language en --output ^"||outputFileName||^" --language 0:und --compression 0:none --no-track-tags  --no-global-tags ^"^(^" ^"||handbrakeFileName||^" ^"^)^" --no-video ^"^(^" ^"||inputFileName||^" ^"^)^"'
             runHandbrake=$false
