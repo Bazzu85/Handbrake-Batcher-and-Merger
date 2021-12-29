@@ -36,11 +36,11 @@ Function Test-IfAlreadyRunning {
                     LogWrite $INFO $("PID [$OtherPID] is already running (this script). Waiting $waitSeconds seconds")
                     $found = $true
                 }
-                If (($OtherCmdLine.Contains("HandBrake.Worker.exe")) -And ($OtherPID -ne $PID) -and (!$found) -and ($runHandbrake)){
+                If (($OtherCmdLine.Contains("HandBrake.Worker.exe")) -And ($OtherPID -ne $PID) -and (!$found)){
                     LogWrite $INFO $("PID [$OtherPID] is already running (HandBrake.Worker.exe). Waiting $waitSeconds seconds")
                     $found = $true
                 }
-                If (($OtherCmdLine.Contains("HandBrakeCLI.exe")) -And ($OtherPID -ne $PID) -and (!$found) -and ($runHandbrake)){
+                If (($OtherCmdLine.Contains("HandBrakeCLI.exe")) -And ($OtherPID -ne $PID) -and (!$found)){
                     LogWrite $INFO $("PID [$OtherPID] is already running (HandBrakeCLI.exe). Waiting $waitSeconds seconds")
                     $found = $true
                 }
@@ -69,8 +69,8 @@ Function LogWrite ($logType , $logString){
     }
 }
 Function Get-OptionsFromJson {
-    #Default options object
-    $options = @{
+    #Default globalOptions object
+    $globalOptions = @{
         runOptions= @{
             debugLog = $false
             runHandbrake = $true
@@ -101,12 +101,12 @@ Function Get-OptionsFromJson {
     }
     # If not found, create the .config file
     if (!(Test-Path -Path $optionsFile)){
-        ConvertTo-Json -InputObject $options | Out-File $optionsFile
+        ConvertTo-Json -InputObject $globalOptions | Out-File $optionsFile
     }
-    $options = Get-Content -LiteralPath $optionsFile | ConvertFrom-Json
-    return $options
+    $globalOptions = Get-Content -LiteralPath $optionsFile | ConvertFrom-Json
+    return $globalOptions
 }
-Function Get-WorkingFolderListFileCsv {
+Function Get-WorkingFolderList {
 
     if (!(Test-Path -LiteralPath "$PSScriptRoot\configuration")){
         New-Item -Path ("$PSScriptRoot\configuration") -ItemType Directory -Force
@@ -115,26 +115,29 @@ Function Get-WorkingFolderListFileCsv {
     # If not create it
     # If yes read all folders in array
     if (!(Test-Path -LiteralPath $workingFolderListCsvFile -PathType leaf)){
-        $workingFolderListCsv = [ordered]@{
+        $workingFolderList = [ordered]@{
             path = $PSScriptRoot
             handbrakePresetLocation="C:\Users\elbaz\AppData\Roaming\HandBrake\presets.json"
             handbrakePreset="Convert to h265 Medium 720p (only video)"
             handbrakeCommand='HandBrakeCLI.exe --preset-import-file "||handbrakePresetLocation||" -Z "||handbrakePreset||" -i "||inputFile||" -o "||outputFile||" --auto-anamorphic'
             mkvMergeLocation="C:\Program Files\MKVToolNix\mkvmerge.exe"
             mkvMergeCommand='"||mkvMergeLocation||" --ui-language en --output ^"||outputFileName||^" --language 0:und --compression 0:none --no-track-tags  --no-global-tags ^"^(^" ^"||handbrakeFileName||^" ^"^)^" --no-video ^"^(^" ^"||inputFileName||^" ^"^)^"'
-            runHandbrake=$false
-            runMkvMerge=$false
+            runHandbrake=$true
+            runMkvMerge=$true
         }
-        $workingFolderListCsv | Export-Csv -Path $workingFolderListCsvFile
+        $workingFolderList | Export-Csv -Path $workingFolderListCsvFile
     } else {
-        $workingFolderListCsv = Import-Csv -Path $workingFolderListCsvFile
+        $workingFolderList = Import-Csv -Path $workingFolderListCsvFile
     }
-    return $workingFolderListCsv
+    return $workingFolderList
 }
-Function Get-WorkingHandbrakeListCsv {
-    # Check if folderList.txt is present. 
-    # If not create it
-    # If yes read all folders in array
+Function Get-WorkingHandbrakeList {
+    <#
+    .SYNOPSIS
+        Check if $workingHandbrakeFileCsv exists.
+        If not, create it.
+        If yes, read it and return the content
+    #>
     if (!(Test-Path -Path $workingHandbrakeFileCsv)){
         LogWrite $DEBUG $("File $workingHandbrakeFileCsv not found")
         $workingHandbrakeList = $null
@@ -145,7 +148,7 @@ Function Get-WorkingHandbrakeListCsv {
     return $workingHandbrakeList
 }
 
-Function Add-WorkingHandbrakeListCsv ($workingHandbrakeListCsv, $handbrakeDestinationFile) {
+Function AddToWorkingHandbrakeList ($workingHandbrakeListCsv, $handbrakeDestinationFile) {
     # add the handbrakeDestinationFile into file
     # if empty
     if (!$workingHandbrakeListCsv){
@@ -161,7 +164,7 @@ Function Add-WorkingHandbrakeListCsv ($workingHandbrakeListCsv, $handbrakeDestin
     }
 }
 
-Function Remove-FromWorkingHandbrakeListCsv ($workingHandbrakeListCsv, $handbrakeDestinationFile) {
+Function RemoveFromWorkingHandbrakeList ($workingHandbrakeListCsv, $handbrakeDestinationFile) {
     # remove the handbrakeDestinationFile from file
     $newWorkingHandbrakeListCsv = $workingHandbrakeListCsv | Where-Object {$_.file -ne $handbrakeDestinationFile}
     if (!$newWorkingHandbrakeListCsv){
@@ -171,53 +174,129 @@ Function Remove-FromWorkingHandbrakeListCsv ($workingHandbrakeListCsv, $handbrak
     }
 }
 
+Function Get-NewOptions ($globalOptions , $workingFolder){
+    # Set the variable from custom folder csv or from generic configuration
+    $newOptions = [PSCustomObject]@{
+        handbrakePresetLocation = ''
+        handbrakePreset = ''
+        handbrakeCommand = ''
+        mkvMergeLocation = ''
+        mkvMergeCommand = ''
+        runHandbrake = ''
+        runMkvMerge = ''
+    }    
+    if ($($workingFolder.handbrakePresetLocation)){
+        $newOptions.handbrakePresetLocation = $workingFolder.handbrakePresetLocation
+    } else {
+        $newOptions.handbrakePresetLocation = $globalOptions.handbrakeOptions.handbrakePresetLocation
+    }
+    if ($($workingFolder.handbrakePreset)){
+        $newOptions.handbrakePreset = $workingFolder.handbrakePreset
+    } else {
+        $newOptions.handbrakePreset = $globalOptions.handbrakeOptions.handbrakePresetList[$globalOptions.handbrakeOptions.handbrakePresetToUse]
+        #handbrakeOptions section
+        foreach ($handbrakePreset in $globalOptions.handbrakeOptions.handbrakePresetlist){
+            LogWrite $DEBUG $("HandBrake. Preset from json: $handbrakePreset")
+        }
+        LogWrite $DEBUG $("HandBrake. Preset to use: $($globalOptions.handbrakeOptions.handbrakePresetlist[$globalOptions.handbrakeOptions.handbrakePresetToUse])")
+        LogWrite $DEBUG $("HandBrake. Preset location: $($globalOptions.handbrakeOptions.handbrakePresetLocation)")
+    }
+    if ($($workingFolder.handbrakeCommand)){
+        $newOptions.handbrakeCommand = $workingFolder.handbrakeCommand
+    } else {
+        $newOptions.handbrakeCommand = $globalOptions.handbrakeOptions.handbrakeCommand
+    }
+    if ($($workingFolder.mkvMergeLocation)){
+        $newOptions.mkvMergeLocation = $workingFolder.mkvMergeLocation
+    } else {
+        $newOptions.mkvMergeLocation = $globalOptions.mkvMergeOptions.mkvMergeLocation
+    }
+    if ($($workingFolder.mkvMergeCommand)){
+        $newOptions.mkvMergeCommand = $workingFolder.mkvMergeCommand
+    } else {
+        $newOptions.mkvMergeCommand = $globalOptions.mkvMergeOptions.mkvMergeCommandList[$globalOptions.mkvMergeOptions.mkvMergeCommandToLaunch]
+        #mkvMergeOptions section
+        foreach ($mkvMergeCommand in $globalOptions.mkvMergeOptions.mkvMergeCommandList){
+            LogWrite $DEBUG $("MkvMerge. Preset from json: $mkvMergeCommand")
+        }
+        LogWrite $DEBUG $("Preset to use: $($globalOptions.mkvMergeOptions.mkvMergeCommandList[$globalOptions.mkvMergeOptions.mkvMergeCommandToLaunch])")
+    }
+    if ($($workingFolder.runHandbrake).ToUpper() -eq "True"){
+        [bool]$newOptions.runHandbrake = $true
+    } else {
+        if ($($workingFolder.runHandbrake).ToUpper() -eq "False"){
+            [bool]$newOptions.runHandbrake = $false
+        } else {
+            [bool]$newOptions.runHandbrake = $globalOptions.runOptions.runHandbrake
+        }
+    }
+    if ($($workingFolder.runMkvMerge).ToUpper() -eq "True"){
+        [bool]$newOptions.runMkvMerge = $true
+    } else {
+        if ($($workingFolder.runMkvMerge).ToUpper() -eq "False"){
+            [bool]$newOptions.runMkvMerge = $false
+        } else {
+            [bool]$newOptions.runMkvMerge = $globalOptions.runOptions.runMkvMerge
+        }
+    }
+    return $newOptions
+}
+
+Function Create-Folder ($path){
+    if (!(Test-Path -Path $path)){
+        New-Item -Path ($path) -ItemType Directory -Force
+    }
+}
+
 #Main Code
 
 #Set title
 $host.UI.RawUI.WindowTitle = $MyInvocation.MyCommand.Name.Replace(".ps1","")
 
-Write-Host "Handbrake Batcher and Merger by Bazzu v.2.1"
+Write-Host "Handbrake Batcher and Merger by Bazzu v.2.2"
 #Write-Host "Powershell infos: "
 #$host
 
-#Set log types
+# Get name of current script
+$ScriptName = $MyInvocation.MyCommand.Name 
+
+# Set log types
 $DEBUG = "DEBUG"
 $INFO  = "INFO "
 
-#Set file paths
+# Create folders if missing
+Create-Folder "$PSScriptRoot\configuration"
+Create-Folder "$PSScriptRoot\log"
+
+# Set file paths
 $optionsFile = "$PSScriptRoot\configuration\options.json"
 $workingFolderListCsvFile = "$PSScriptRoot\configuration\Working Folder List.csv"
 $workingHandbrakeFileTxt = "$PSScriptRoot\Working Handbrake File List.txt"
 $workingHandbrakeFileCsv = "$PSScriptRoot\configuration\Working Handbrake File List.csv"
+$date = Get-Date -Format "yyyyMMdd"
+$logFile = "$PSScriptRoot\log\$($MyInvocation.MyCommand.Name.Replace('.ps1',''))_$date.log"
 
-# if the base configuration files are missing, remember to abort exectution later
+# if the base configuration files are missing, remember to abort execution later
 if (!(Test-Path -LiteralPath $optionsFile -PathType leaf) -or !(Test-Path -LiteralPath $workingFolderListCsvFile -PathType leaf)){
     [bool]$abortExecution = $true
 } else {
     [bool]$abortExecution = $false
 }
 
-if (!(Test-Path -Path "$PSScriptRoot\configuration")){
-    New-Item -Path ("$PSScriptRoot\configuration") -ItemType Directory -Force
-}
-$options = Get-OptionsFromJson
+# Get options and working folders from files
+$globalOptions = Get-OptionsFromJson
+$workingFolderList = Get-WorkingFolderList
 
-
-
-$date = Get-Date -Format "yyyyMMdd"
-$logFile = "$PSScriptRoot\log\$($MyInvocation.MyCommand.Name.Replace('.ps1',''))_$date.log"
-if (!(Test-Path -Path $logFile)){
-    New-Item -Path ("$PSScriptRoot\log") -ItemType Directory -Force
+if ($abortExecution){
+    Write-Host "Generated missing default configuration files in $PSScriptRoot\configuration. Please review it and launch again"
+    pause
+    exit
 }
 
-#Set the working variables
-
-#runOptions section
-[bool]$debugLog = $options.runOptions.debugLog
-$waitSeconds = $options.runOptions.waitSecondsOption
-
-#fileFolderOptions section
-$includeList = $options.FileFolderOptions.includeList
+# Set the working variables from options.json
+[bool]$debugLog = $globalOptions.runOptions.debugLog
+$waitSeconds = $globalOptions.runOptions.waitSecondsOption
+$includeList = $globalOptions.FileFolderOptions.includeList
 $total = $includeList.count
 $counter = 0
 $includeString = ''
@@ -229,7 +308,7 @@ foreach ($include in $includeList){
         $includeString += "$include , " #empty
     }
 }
-$excludeFileList = $options.FileFolderOptions.excludeFileList
+$excludeFileList = $globalOptions.FileFolderOptions.excludeFileList
 $total = $excludeFileList.count
 $counter = 0
 $excludeFileListString = ''
@@ -241,89 +320,21 @@ foreach ($excludeFile in $excludeFileList){
         $excludeFileListString += "$excludeFile , " #empty
     }
 }
-$excludeFileFolderList = $options.FileFolderOptions.excludeFileFolderList
+$excludeFileFolderList = $globalOptions.FileFolderOptions.excludeFileFolderList
 
-# Get name of current script and check if already running
-$ScriptName = $MyInvocation.MyCommand.Name 
+# Check if an instance is already running
 Test-IfAlreadyRunning -ScriptName $ScriptName
 LogWrite $INFO $("(PID=[$PID]) This is the 1st and only instance allowed to run") #this only shows in one instance
 
-# Get workingFolderListTxtFile from folderList.txt
-$workingFolderListCsv = Get-WorkingFolderListFileCsv
-
-if ($abortExecution){
-    Write-Host "Generated missing default configuration files in $PSScriptRoot\configuration. Please review it and launch again"
-    pause
-    exit
-}
-# Work on all folder in Working Folder List.txt
-foreach ($workingFolder in $workingFolderListCsv){
-    # if the folder is not there, jump to the next
+# Work on all folder in $workingFolderList
+foreach ($workingFolder in $workingFolderList){
+    # if the folder doesn't exists , jump to the next
     if (!(Test-Path -Path $($workingFolder.path))){
         LogWrite $DEBUG $("Folder $($workingFolder.path) not found. Skipping")
         continue
     }
     LogWrite $INFO $("Running script in folder $($workingFolder.path)")
-    
-    # Set the variable from custom folder csv or from generic configuration
-    if ($($workingFolder.handbrakePresetLocation)){
-        $handbrakePresetLocation = $workingFolder.handbrakePresetLocation
-    } else {
-        $handbrakePresetLocation = $options.handbrakeOptions.handbrakePresetLocation
-    }
-    if ($($workingFolder.handbrakePreset)){
-        $handbrakePreset = $workingFolder.handbrakePreset
-    } else {
-        $handbrakePresetToUse = $options.handbrakeOptions.handbrakePresetToUse
-        $handbrakePresetlist = $options.handbrakeOptions.handbrakePresetList
-        $handbrakePreset = $handbrakePresetlist[$handbrakePresetToUse]
-        #handbrakeOptions section
-        foreach ($handbrakePreset in $handbrakePresetlist){
-            LogWrite $DEBUG $("HandBrake. Preset from json: $handbrakePreset")
-        }
-        LogWrite $DEBUG $("HandBrake. Preset to use: $($handbrakePresetlist[$handbrakePresetToUse])")
-        LogWrite $DEBUG $("HandBrake. Preset location: $handbrakePresetLocation")
-    }
-    if ($($workingFolder.handbrakeCommand)){
-        $handbrakeCommand = $workingFolder.handbrakeCommand
-    } else {
-        $handbrakeCommand = $options.handbrakeOptions.handbrakeCommand
-    }
-    if ($($workingFolder.mkvMergeLocation)){
-        $mkvMergeLocation = $workingFolder.mkvMergeLocation
-    } else {
-        $mkvMergeLocation = $options.mkvMergeOptions.mkvMergeLocation
-    }
-    if ($($workingFolder.mkvMergeCommand)){
-        $mkvMergeCommand = $workingFolder.mkvMergeCommand
-    } else {
-        $mkvMergeCommandToLaunch = $options.mkvMergeOptions.mkvMergeCommandToLaunch
-        $mkvMergeCommandList = $options.mkvMergeOptions.mkvMergeCommandList
-        $mkvMergeCommand = $mkvMergeCommandList[$mkvMergeCommandToLaunch]
-        #mkvMergeOptions section
-        foreach ($mkvMergeCommand in $mkvMergeCommandList){
-            LogWrite $DEBUG $("MkvMerge. Preset from json: $mkvMergeCommand")
-        }
-        LogWrite $DEBUG $("Preset to use: $($mkvMergeCommandList[$mkvMergeCommandToLaunch])")
-    }
-    if ($($workingFolder.runHandbrake).ToUpper() -eq "True"){
-        [bool]$runHandbrake = $true
-    } else {
-        if ($($workingFolder.runHandbrake).ToUpper() -eq "False"){
-            [bool]$runHandbrake = $false
-        } else {
-            [bool]$runHandbrake = $options.runOptions.runHandbrake
-        }
-    }
-    if ($($workingFolder.runMkvMerge).ToUpper() -eq "True"){
-        [bool]$runMkvMerge = $true
-    } else {
-        if ($($workingFolder.runMkvMerge).ToUpper() -eq "False"){
-            [bool]$runMkvMerge = $false
-        } else {
-            [bool]$runMkvMerge = $options.runOptions.runMkvMerge
-        }
-    }
+    $newOptions = Get-NewOptions $globalOptions $workingFolder
 
     #Get the file list
     $files = Get-ChildItem -Path $($workingFolder.path) -Include $includeList -Recurse -Exclude $excludeFileList 
@@ -341,8 +352,8 @@ foreach ($workingFolder in $workingFolderListCsv){
         $foundWorkingHandbrake = $false
 
         ### Check if $handbrakeDestinationFile was pending in previous runs. If not jump to next file
-        if ($runHandbrake){
-            $workingHandbrakeList = Get-WorkingHandbrakeListCsv
+        if ($newOptions.runHandbrake){
+            $workingHandbrakeList = Get-WorkingHandbrakeList
             # Search if currently output file is in a previous run list. If yes, we can treat it as unfinished
             # if not and the file is already on disk, jump to next file
             foreach ($workingHandbrake in $workingHandbrakeList){
@@ -380,37 +391,37 @@ foreach ($workingFolder in $workingFolderListCsv){
 
         ### Exec conversion with HandBrakeCli
         LogWrite $INFO $("Working on $($file.FullName)")
-        $handbrakeNewcommand = $handbrakeCommand
-        $handbrakeNewcommand = $handbrakeNewcommand.Replace("||handbrakePresetLocation||", $handbrakePresetLocation)
-        $handbrakeNewcommand = $handbrakeNewcommand.Replace("||handbrakePreset||", $($handbrakePresetlist[$handbrakePresetToUse]))
+        $handbrakeNewcommand = $newOptions.handbrakeCommand
+        $handbrakeNewcommand = $handbrakeNewcommand.Replace("||handbrakePresetLocation||", $newOptions.handbrakePresetLocation)
+        $handbrakeNewcommand = $handbrakeNewcommand.Replace("||handbrakePreset||", $newOptions.handbrakePreset)
         $handbrakeNewcommand = $handbrakeNewcommand.Replace("||inputFile||", $file)
         $handbrakeNewcommand = $handbrakeNewcommand.Replace("||outputFile||", $handbrakeDestinationFile)
 
         LogWrite $INFO $("Handbrake command: $handbrakeNewcommand")
-        if ($runHandbrake){
+        if ($newOptions.runHandbrake){
             if (!$foundWorkingHandbrake){
-                $workingHandbrakeList = Get-WorkingHandbrakeListCsv
-                Add-WorkingHandbrakeListCsv $workingHandbrakeList $handbrakeDestinationFile
+                $workingHandbrakeList = Get-WorkingHandbrakeList
+                AddToWorkingHandbrakeList $workingHandbrakeList $handbrakeDestinationFile
                 LogWrite $DEBUG $("Handbrake file $handbrakeDestinationFile added to $workingHandbrakeFileCsv")
             }
             Invoke-Expression $handbrakeNewcommand
             $handbrakeExitCode = $LASTEXITCODE
             LogWrite $INFO $("Handbrake rc: $handbrakeExitCode of $($file.name)")
             if ($handbrakeExitCode -eq 0){
-                $workingHandbrakeList = Get-WorkingHandbrakeListCsv
+                $workingHandbrakeList = Get-WorkingHandbrakeList
                 LogWrite $DEBUG $("Handbrake file $handbrakeDestinationFile removed from $workingHandbrakeFileTxt")
-                Remove-FromWorkingHandbrakeListCsv $workingHandbrakeList $handbrakeDestinationFile
+                RemoveFromWorkingHandbrakeList $workingHandbrakeList $handbrakeDestinationFile
                 LogWrite $DEBUG $("Handbrake file $handbrakeDestinationFile removed from $workingHandbrakeFileTxt")
             }
         } else {
             LogWrite $INFO $("Handbrake disabled")
         }
 
-        ### Merge file with command in options
+        ### Merge file with command in globalOptions
         $inputfile = "$($file.DirectoryName)\$($file.Name)"
         $outputfile = "$($file.DirectoryName + "\1tmp")\$($file.Name.Replace($file.Extension,".mkv"))"
-        $mergeNewcommand = $mkvMergeCommand
-        $mergeNewcommand = $mergeNewcommand.Replace("||mkvMergeLocation||", $mkvMergeLocation)
+        $mergeNewcommand = $newOptions.mkvMergeCommand
+        $mergeNewcommand = $mergeNewcommand.Replace("||mkvMergeLocation||", $newOptions.mkvMergeLocation)
         $mergeNewcommand = $mergeNewcommand.Replace("||outputFileName||", $outputfile)
         $mergeNewcommand = $mergeNewcommand.Replace("||inputFileName||", $inputfile)
         $mergeNewcommand = $mergeNewcommand.Replace("||handbrakeFileName||", $handbrakeDestinationFile)
@@ -419,7 +430,7 @@ foreach ($workingFolder in $workingFolderListCsv){
 
         LogWrite $INFO $("Merging to $outputfile")
         LogWrite $INFO $("Mkvmerge command: cmd /c $mergeNewcommand")
-        if ($runMkvMerge){
+        if ($newOptions.runMkvMerge){
             cmd /c $mergeNewcommand
             $mergeExitCode = $LASTEXITCODE
             LogWrite $INFO $("MkvMerge rc: $mergeExitCode of $outputfile")
