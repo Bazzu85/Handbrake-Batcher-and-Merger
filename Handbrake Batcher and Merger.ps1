@@ -78,18 +78,13 @@ Function Get-OptionsFromJson {
             waitSecondsOption = 60
         }
         handbrakeOptions= [ordered]@{
-            handbrakePresetToUse=0 #Number of preset to use
-            handbrakePresetList=@("Convert to h265 Medium 720p (only video)",
-                                "Convert to h265 Medium (only video)",
-                                "Convert to h265 Medium 480p + audio AAC"
-                                )
+            handbrakePreset="Convert to h265 Medium 720p (only video)"
             handbrakePresetLocation="C:\Users\elbaz\AppData\Roaming\HandBrake\presets.json"
             handbrakeCommand='HandBrakeCLI.exe --preset-import-file "||handbrakePresetLocation||" -Z "||handbrakePreset||" -i "||inputFile||" -o "||outputFile||" --auto-anamorphic'
         }
         mkvMergeOptions= [ordered]@{
-            mkvMergeCommandToLaunch=0 #Number of command to use
-            mkvMergeCommandList=@('"||mkvMergeLocation||" --ui-language en --output ^"||outputFileName||^" --language 0:und --compression 0:none --no-track-tags  --no-global-tags ^"^(^" ^"||handbrakeFileName||^" ^"^)^" --no-video ^"^(^" ^"||inputFileName||^" ^"^)^"')
-            mkvMergeLocation="C:\Program Files\MKVToolNix\mkvmerge.exe"
+            mkvMergeCommand = '"||mkvMergeLocation||" --ui-language en --output ^"||outputFileName||^" --language 0:und --compression 0:none --no-track-tags  --no-global-tags ^"^(^" ^"||handbrakeFileName||^" ^"^)^" --no-video ^"^(^" ^"||inputFileName||^" ^"^)^"'
+            mkvMergeLocation = "C:\Program Files\MKVToolNix\mkvmerge.exe"
         }
         fileFolderOptions= [ordered]@{
             includeList=@("*.mp4",
@@ -117,11 +112,8 @@ Function Get-OptionsFromJson {
     if ($globalOptionsFromJson.runOptions.waitSecondsOption){
         $globalOptions.runOptions.waitSecondsOption = $globalOptionsFromJson.runOptions.waitSecondsOption
     }
-    if ($globalOptionsFromJson.handbrakeOptions.handbrakePresetToUse){
-        $globalOptions.handbrakeOptions.handbrakePresetToUse = $globalOptionsFromJson.handbrakeOptions.handbrakePresetToUse
-    }
-    if ($globalOptionsFromJson.handbrakeOptions.handbrakePresetList){
-        $globalOptions.handbrakeOptions.handbrakePresetList = $globalOptionsFromJson.handbrakeOptions.handbrakePresetList
+    if ($globalOptionsFromJson.handbrakeOptions.handbrakePreset){
+        $globalOptions.handbrakeOptions.handbrakePreset = $globalOptionsFromJson.handbrakeOptions.handbrakePreset
     }
     if ($globalOptionsFromJson.handbrakeOptions.handbrakePresetLocation){
         $globalOptions.handbrakeOptions.handbrakePresetLocation = $globalOptionsFromJson.handbrakeOptions.handbrakePresetLocation
@@ -129,11 +121,8 @@ Function Get-OptionsFromJson {
     if ($globalOptionsFromJson.handbrakeOptions.handbrakeCommand){
         $globalOptions.handbrakeOptions.handbrakeCommand = $globalOptionsFromJson.handbrakeOptions.handbrakeCommand
     }
-    if ($globalOptionsFromJson.mkvMergeOptions.mkvMergeCommandToLaunch){
-        $globalOptions.mkvMergeOptions.mkvMergeCommandToLaunch = $globalOptionsFromJson.mkvMergeOptions.mkvMergeCommandToLaunch
-    }
-    if ($globalOptionsFromJson.mkvMergeOptions.mkvMergeCommandList){
-        $globalOptions.mkvMergeOptions.mkvMergeCommandList = $globalOptionsFromJson.mkvMergeOptions.mkvMergeCommandList
+    if ($globalOptionsFromJson.mkvMergeOptions.mkvMergeCommand){
+        $globalOptions.mkvMergeOptions.mkvMergeCommand = $globalOptionsFromJson.mkvMergeOptions.mkvMergeCommand
     }
     if ($globalOptionsFromJson.mkvMergeOptions.mkvMergeLocation){
         $globalOptions.mkvMergeOptions.mkvMergeLocation = $globalOptionsFromJson.mkvMergeOptions.mkvMergeLocation
@@ -271,6 +260,7 @@ Function Get-NewOptions ($globalOptions , $workingFolder){
         runHandbrake = ''
         runMkvMerge = ''
     }    
+    #region Build the $newOptions object merging the infos from csv and the global options json
     if ($($workingFolder.handbrakePresetLocation)){
         $newOptions.handbrakePresetLocation = $workingFolder.handbrakePresetLocation
     } else {
@@ -279,13 +269,7 @@ Function Get-NewOptions ($globalOptions , $workingFolder){
     if ($($workingFolder.handbrakePreset)){
         $newOptions.handbrakePreset = $workingFolder.handbrakePreset
     } else {
-        $newOptions.handbrakePreset = $globalOptions.handbrakeOptions.handbrakePresetList[$globalOptions.handbrakeOptions.handbrakePresetToUse]
-        #handbrakeOptions section
-        foreach ($handbrakePreset in $globalOptions.handbrakeOptions.handbrakePresetlist){
-            LogWrite $DEBUG $("HandBrake. Preset from json: $handbrakePreset")
-        }
-        LogWrite $DEBUG $("HandBrake. Preset to use: $($globalOptions.handbrakeOptions.handbrakePresetlist[$globalOptions.handbrakeOptions.handbrakePresetToUse])")
-        LogWrite $DEBUG $("HandBrake. Preset location: $($globalOptions.handbrakeOptions.handbrakePresetLocation)")
+        $newOptions.handbrakePreset = $globalOptions.handbrakeOptions.handbrakePreset
     }
     if ($($workingFolder.handbrakeCommand)){
         $newOptions.handbrakeCommand = $workingFolder.handbrakeCommand
@@ -300,12 +284,7 @@ Function Get-NewOptions ($globalOptions , $workingFolder){
     if ($($workingFolder.mkvMergeCommand)){
         $newOptions.mkvMergeCommand = $workingFolder.mkvMergeCommand
     } else {
-        $newOptions.mkvMergeCommand = $globalOptions.mkvMergeOptions.mkvMergeCommandList[$globalOptions.mkvMergeOptions.mkvMergeCommandToLaunch]
-        #mkvMergeOptions section
-        foreach ($mkvMergeCommand in $globalOptions.mkvMergeOptions.mkvMergeCommandList){
-            LogWrite $DEBUG $("MkvMerge. Preset from json: $mkvMergeCommand")
-        }
-        LogWrite $DEBUG $("Preset to use: $($globalOptions.mkvMergeOptions.mkvMergeCommandList[$globalOptions.mkvMergeOptions.mkvMergeCommandToLaunch])")
+        $newOptions.mkvMergeCommand = $globalOptions.mkvMergeOptions.mkvMergeCommand
     }
     if ($($workingFolder.runHandbrake).ToUpper() -eq "True"){
         [bool]$newOptions.runHandbrake = $true
@@ -325,6 +304,17 @@ Function Get-NewOptions ($globalOptions , $workingFolder){
             [bool]$newOptions.runMkvMerge = $globalOptions.runOptions.runMkvMerge
         }
     }
+    #endregion
+    LogWrite $INFO $("Options for current working folder")
+    LogWrite $INFO $("HandBrake. handbrakePreset        : $($newOptions.handbrakePreset)")
+    LogWrite $INFO $("HandBrake. handbrakePresetLocation: $($newOptions.handbrakePresetLocation)")
+    LogWrite $INFO $("HandBrake. handbrakeCommand       : $($newOptions.handbrakeCommand)")
+    LogWrite $INFO $("MkvMerge . mkvMergeLocation       : $($newOptions.mkvMergeLocation)")
+    LogWrite $INFO $("MkvMerge . mkvMergeCommand        : $($newOptions.mkvMergeCommand)")
+    LogWrite $INFO $("MkvMerge . mkvMergeLocation       : $($newOptions.mkvMergeLocation)")
+    LogWrite $INFO $("Global   . runHandbrake           : $($newOptions.runHandbrake)")
+    LogWrite $INFO $("Global   . runMkvMerge            : $($newOptions.runMkvMerge)")
+
     return $newOptions
 }
 
@@ -339,7 +329,7 @@ Function CreateFolder ($path){
 #Set title
 $host.UI.RawUI.WindowTitle = $MyInvocation.MyCommand.Name.Replace(".ps1","")
 
-Write-Host "Handbrake Batcher and Merger by Bazzu v.2.3"
+Write-Host "Handbrake Batcher and Merger by Bazzu v.2.4"
 #Write-Host "Powershell infos: "
 #$host
 
