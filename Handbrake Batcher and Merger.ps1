@@ -96,7 +96,7 @@ Function Get-OptionsFromJson {
     }
     # If not found, create the .config file
     if (!(Test-Path -Path $optionsFile)){
-        ConvertTo-Json -InputObject $globalOptions | Out-File $optionsFile
+        ConvertTo-Json -InputObject $globalOptions | Out-File $optionsFile 
     }
     #region Read it and build the $globalOptions object
     $globalOptionsFromJson = Get-Content -LiteralPath $optionsFile | ConvertFrom-Json
@@ -405,7 +405,7 @@ LogWrite $INFO $("(PID=[$PID]) This is the 1st and only instance allowed to run"
 # Work on all folder in $workingFolderList
 foreach ($workingFolder in $workingFolderList){
     # if the folder doesn't exists , jump to the next
-    if (!(Test-Path -Path $($workingFolder.path))){
+    if (!(Test-Path -LiteralPath $($workingFolder.path))){
         LogWrite $DEBUG $("Folder $($workingFolder.path) not found. Skipping")
         continue
     }
@@ -413,7 +413,7 @@ foreach ($workingFolder in $workingFolderList){
     $newOptions = Get-NewOptions $globalOptions $workingFolder
 
     #Get the file list
-    $files = Get-ChildItem -Path $($workingFolder.path) -Include $includeList -Recurse -Exclude $excludeFileList 
+    $files = Get-ChildItem -LiteralPath $($workingFolder.path) -Include $includeList -Recurse -Exclude $excludeFileList 
     foreach ($file in $files){
         #Check if the file exists
         if (!(Test-Path -LiteralPath $file -PathType leaf)){
