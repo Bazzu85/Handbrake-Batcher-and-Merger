@@ -63,9 +63,7 @@ includeList: specify the mask to include files from recursive elaboration
 
 handbrakePresetLocation: the location of preset json
 
-handbrakePresetList: the preset name list to work on
-
-handbrakePresetToUse: the numeric preset to use from the handbrakePresetList. Starts with zero
+handbrakePreset: the preset to work on
 
 handbrakeCommand: command to launch for execute handbrakeCLI conversion.
 
@@ -83,9 +81,7 @@ handbrakeCommand: command to launch for execute handbrakeCLI conversion.
 
 mkvMergeLocation: the MkvMerge.exe file location
 
-mkvMergeCommandToLaunch: the numeric preset to use from the mkvMergeCommandList. Starts with zero
-
-mkvMergeCommandList: The command to launch for execute the MkvMerge.exe conversion. This is a list and is used only the command from the index mkvMergeCommandToLaunch
+mkvMergeCommand: The command to launch for execute the MkvMerge.exe conversion.
 
 You can work with my other project https://github.com/Bazzu85/MKVmergeBatcher/releases to extract command to use.
 
