@@ -78,7 +78,7 @@ Function Get-OptionsFromJson {
             waitSecondsOption = 60
         }
         handbrakeOptions= [ordered]@{
-            handbrakePreset="Convert to h265 Medium 720p (only video)"
+            handbrakePreset="H265 Medium CQ20 720p Only video"
             handbrakePresetLocation="C:\Users\elbaz\AppData\Roaming\HandBrake\presets.json"
             handbrakeCommand='HandBrakeCLI.exe --preset-import-file "||handbrakePresetLocation||" -Z "||handbrakePreset||" -i "||inputFile||" -o "||outputFile||" --auto-anamorphic'
         }
@@ -151,7 +151,7 @@ Function Get-WorkingFolderList {
     $defaultWorkingFolderList = [ordered]@{
         path = $PSScriptRoot
         handbrakePresetLocation="C:\Users\elbaz\AppData\Roaming\HandBrake\presets.json"
-        handbrakePreset="Convert to h265 Medium 720p (only video)"
+        handbrakePreset="H265 Medium CQ20 720p Only video"
         handbrakeCommand='HandBrakeCLI.exe --preset-import-file "||handbrakePresetLocation||" -Z "||handbrakePreset||" -i "||inputFile||" -o "||outputFile||" --auto-anamorphic'
         mkvMergeLocation="C:\Program Files\MKVToolNix\mkvmerge.exe"
         mkvMergeCommand='"||mkvMergeLocation||" --ui-language en --output ^"||outputFileName||^" --language 0:und --compression 0:none --no-track-tags  --no-global-tags ^"^(^" ^"||handbrakeFileName||^" ^"^)^" --no-video ^"^(^" ^"||inputFileName||^" ^"^)^"'
