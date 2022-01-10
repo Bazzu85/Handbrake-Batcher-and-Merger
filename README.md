@@ -44,6 +44,8 @@ Please be aware in the options.json that some characters need to be specified es
 
 waitSecondsOption: this is a numeric indicator to set how many seconds to wait between instances check.
 
+keepLogForDays: this is a numeric indicator to set how many days the log are kept in the log folder.
+
 debugLog: activate debug log (true/false).
 
 runHandbrake: tells the script to run the HandbrakeCLI command for every accepted file
@@ -59,19 +61,21 @@ The option is primary for folders that cannot specified in excludeFileList
 
 includeList: specify the mask to include files from recursive elaboration
 
-### handbrakeOptions
+### conversionOptions
 
-handbrakePresetLocation: the location of preset json
+conversionCustomField1: Custom field 1. Default: the location of preset json
 
-handbrakePreset: the preset to work on
+conversionCustomField2: Custom field 1. Default: the preset to work on
 
-handbrakeCommand: command to launch for execute handbrakeCLI conversion.
+Add to the ps1 main file as many conversionCustomField you want duplicating conversionCustomField2
+
+conversionCommand: command to launch for execute conversion.
 
 #### Wildcards: 
 
-||handbrakePresetLocation|| -> the preset json location in your system
+||conversionCustomField1|| -> Custom field 1
 
-||handbrakePreset|| -> the preset to use
+||conversionCustomField2|| -> Custom field 2
 
 ||inputFile|| -> the input file that's the script is running on
 

@@ -65,7 +65,22 @@ Function LogWrite ($logType , $logString){
     if ($logOk){
         $logstring = "$(Get-Date -Format "yyyyMMdd_HHmm") $logType $logstring"
         Write-Host $logstring
-        Add-content $logfile -value $logstring
+        Add-content $logFile -value $logstring
+    }
+}
+Function DeleteOldLogs (){
+    <#
+    .SYNOPSIS
+    Delete old log files based on options.json parameter
+    #>
+    $savedLogFiles = Get-ChildItem -LiteralPath $("$PSScriptRoot\log") -Include "*.log"
+    foreach($savedLogFile in $savedLogFiles){
+        $fileName = $savedLogFile.BaseName
+        $maxDate = (Get-Date).AddDays($keepLogForDays * -1)
+        $maxDate = Get-Date ($maxDate) -Format "yyyyMMdd"
+        if ($($fileName.substring(($fileName.length - 8) , 8)) -lt $maxDate){
+            Remove-Item -LiteralPath $savedLogFile -Force
+        }
     }
 }
 Function Get-OptionsFromJson {
@@ -76,11 +91,12 @@ Function Get-OptionsFromJson {
             runHandbrake = $true
             runMkvMerge = $true
             waitSecondsOption = 60
+            keepLogForDays = 7
         }
-        handbrakeOptions= [ordered]@{
-            handbrakePreset="H265 Medium CQ20 720p Only video"
-            handbrakePresetLocation="C:\Users\elbaz\AppData\Roaming\HandBrake\presets.json"
-            handbrakeCommand='HandBrakeCLI.exe --preset-import-file "||handbrakePresetLocation||" -Z "||handbrakePreset||" -i "||inputFile||" -o "||outputFile||" --auto-anamorphic'
+        conversionOptions= [ordered]@{
+            conversionCustomField2="H265 Medium CQ20 720p Only video"
+            conversionCustomField1="C:\Users\elbaz\AppData\Roaming\HandBrake\presets.json"
+            conversionCommand='HandBrakeCLI.exe --preset-import-file "||conversionCustomField1||" -Z "||conversionCustomField2||" -i "||inputFile||" -o "||outputFile||" --auto-anamorphic'
         }
         mkvMergeOptions= [ordered]@{
             mkvMergeCommand = '"||mkvMergeLocation||" --ui-language en --output ^"||outputFileName||^" --language 0:und --compression 0:none --no-track-tags  --no-global-tags ^"^(^" ^"||handbrakeFileName||^" ^"^)^" --no-video ^"^(^" ^"||inputFileName||^" ^"^)^"'
@@ -112,14 +128,17 @@ Function Get-OptionsFromJson {
     if ($globalOptionsFromJson.runOptions.waitSecondsOption){
         $globalOptions.runOptions.waitSecondsOption = $globalOptionsFromJson.runOptions.waitSecondsOption
     }
-    if ($globalOptionsFromJson.handbrakeOptions.handbrakePreset){
-        $globalOptions.handbrakeOptions.handbrakePreset = $globalOptionsFromJson.handbrakeOptions.handbrakePreset
+    if ($globalOptionsFromJson.runOptions.keepLogForDays){
+        $globalOptions.runOptions.keepLogForDays = $globalOptionsFromJson.runOptions.keepLogForDays
     }
-    if ($globalOptionsFromJson.handbrakeOptions.handbrakePresetLocation){
-        $globalOptions.handbrakeOptions.handbrakePresetLocation = $globalOptionsFromJson.handbrakeOptions.handbrakePresetLocation
+    if ($globalOptionsFromJson.conversionOptions.conversionCustomField2){
+        $globalOptions.conversionOptions.conversionCustomField2 = $globalOptionsFromJson.conversionOptions.conversionCustomField2
     }
-    if ($globalOptionsFromJson.handbrakeOptions.handbrakeCommand){
-        $globalOptions.handbrakeOptions.handbrakeCommand = $globalOptionsFromJson.handbrakeOptions.handbrakeCommand
+    if ($globalOptionsFromJson.conversionOptions.conversionCustomField1){
+        $globalOptions.conversionOptions.conversionCustomField1 = $globalOptionsFromJson.conversionOptions.conversionCustomField1
+    }
+    if ($globalOptionsFromJson.conversionOptions.conversionCommand){
+        $globalOptions.conversionOptions.conversionCommand = $globalOptionsFromJson.conversionOptions.conversionCommand
     }
     if ($globalOptionsFromJson.mkvMergeOptions.mkvMergeCommand){
         $globalOptions.mkvMergeOptions.mkvMergeCommand = $globalOptionsFromJson.mkvMergeOptions.mkvMergeCommand
@@ -150,9 +169,9 @@ Function Get-WorkingFolderList {
     }
     $defaultWorkingFolderList = [ordered]@{
         path = $PSScriptRoot
-        handbrakePresetLocation="C:\Users\elbaz\AppData\Roaming\HandBrake\presets.json"
-        handbrakePreset="H265 Medium CQ20 720p Only video"
-        handbrakeCommand='HandBrakeCLI.exe --preset-import-file "||handbrakePresetLocation||" -Z "||handbrakePreset||" -i "||inputFile||" -o "||outputFile||" --auto-anamorphic'
+        conversionCustomField1="C:\Users\elbaz\AppData\Roaming\HandBrake\presets.json"
+        conversionCustomField2="H265 Medium CQ20 720p Only video"
+        conversionCommand='HandBrakeCLI.exe --preset-import-file "||conversionCustomField1||" -Z "||conversionCustomField2||" -i "||inputFile||" -o "||outputFile||" --auto-anamorphic'
         mkvMergeLocation="C:\Program Files\MKVToolNix\mkvmerge.exe"
         mkvMergeCommand='"||mkvMergeLocation||" --ui-language en --output ^"||outputFileName||^" --language 0:und --compression 0:none --no-track-tags  --no-global-tags ^"^(^" ^"||handbrakeFileName||^" ^"^)^" --no-video ^"^(^" ^"||inputFileName||^" ^"^)^"'
         runHandbrake=$true
@@ -171,28 +190,28 @@ Function Get-WorkingFolderList {
     $i=0
     foreach ($workingFolderFromCsv in $workingFolderListFromCsv){
         $newRow = $defaultWorkingFolderList
-        if ($null -ne $workingFolderFromCsv.path){
+        if (($null -ne $workingFolderFromCsv.path) -and ($workingFolderFromCsv.path)){
             $newRow.path = $workingFolderFromCsv.path
         }
-        if ($null -ne $workingFolderFromCsv.handbrakePresetLocation){
-            $newRow.handbrakePresetLocation = $workingFolderFromCsv.handbrakePresetLocation
+        if (($null -ne $workingFolderFromCsv.conversionCustomField1) -and ($workingFolderFromCsv.conversionCustomField2)){
+            $newRow.conversionCustomField1 = $workingFolderFromCsv.conversionCustomField1
         }
-        if ($null -ne $workingFolderFromCsv.handbrakePreset){
-            $newRow.handbrakePreset = $workingFolderFromCsv.handbrakePreset
+        if (($null -ne $workingFolderFromCsv.conversionCustomField2) -and ($workingFolderFromCsv.conversionCustomField2)){
+            $newRow.conversionCustomField2 = $workingFolderFromCsv.conversionCustomField2
         }
-        if ($null -ne $workingFolderFromCsv.handbrakeCommand){
-            $newRow.handbrakeCommand = $workingFolderFromCsv.handbrakeCommand
+        if (($null -ne $workingFolderFromCsv.conversionCommand) -and ($workingFolderFromCsv.conversionCommand)){
+            $newRow.conversionCommand = $workingFolderFromCsv.conversionCommand
         }
-        if ($null -ne $workingFolderFromCsv.mkvMergeLocation){
+        if (($null -ne $workingFolderFromCsv.mkvMergeLocation) -and ($workingFolderFromCsv.mkvMergeLocation)){
             $newRow.mkvMergeLocation = $workingFolderFromCsv.mkvMergeLocation
         }
-        if ($null -ne $workingFolderFromCsv.mkvMergeCommand){
+        if (($null -ne $workingFolderFromCsv.mkvMergeCommand) -and ($workingFolderFromCsv.mkvMergeCommand)){
             $newRow.mkvMergeCommand = $workingFolderFromCsv.mkvMergeCommand
         }
-        if ($null -ne $workingFolderFromCsv.runHandbrake){
+        if (($null -ne $workingFolderFromCsv.runHandbrake) -and ($workingFolderFromCsv.runHandbrake)){
             $newRow.runHandbrake = $workingFolderFromCsv.runHandbrake
         }
-        if ($null -ne $workingFolderFromCsv.runMkvMerge){
+        if (($null -ne $workingFolderFromCsv.runMkvMerge) -and ($workingFolderFromCsv.runMkvMerge)){
             $newRow.runMkvMerge = $workingFolderFromCsv.runMkvMerge
         }
         if ($i -eq 0){
@@ -206,75 +225,81 @@ Function Get-WorkingFolderList {
     #endregion
     return $workingFolderList
 }
-Function Get-WorkingHandbrakeList {
+Function Get-PendingConversionFiles {
     <#
     .SYNOPSIS
-        Check if $workingHandbrakeFileCsv exists.
+        Check if $pendingConversionFile exists.
         If not, create it.
         If yes, read it and return the content
     #>
-    if (!(Test-Path -Path $workingHandbrakeFileCsv)){
-        LogWrite $DEBUG $("File $workingHandbrakeFileCsv not found")
-        $workingHandbrakeList = $null
-    } else {
-        LogWrite $DEBUG $("File $workingHandbrakeFileCsv found. Importing CSV")
-        $workingHandbrakeList = Import-Csv -LiteralPath $workingHandbrakeFileCsv
+    # if $pendingConversionFile doesn't exist and 
+    # $oldPendingConversionFile yes, rename it
+    if (!(Test-Path -Path $pendingConversionFile) -and (Test-Path -Path $oldPendingConversionFile)){
+        LogWrite $DEBUG $("Renaming $oldPendingConversionFile into $pendingConversionFile")
+        Rename-Item -LiteralPath $oldPendingConversionFile -NewName $pendingConversionFile -Force
     }
-    return $workingHandbrakeList
+    if (!(Test-Path -Path $pendingConversionFile)){
+        LogWrite $DEBUG $("File $pendingConversionFile not found")
+        $pendingConversionFileList = $null
+    } else {
+        LogWrite $DEBUG $("File $pendingConversionFile found. Importing CSV")
+        $pendingConversionFileList = Import-Csv -LiteralPath $pendingConversionFile
+    }
+    return $pendingConversionFileList
 }
 
-Function AddToWorkingHandbrakeList ($workingHandbrakeListCsv, $handbrakeDestinationFile) {
+Function AddToPendingConversionFiles ($pendingConversionFileList, $conversionDestinationFile) {
     # add the handbrakeDestinationFile into file
     # if empty
-    if (!$workingHandbrakeListCsv){
-        $workingHandbrakeListCsv = [ordered]@{
-            file = $handbrakeDestinationFile
+    if (!$pendingConversionFileList){
+        $pendingConversionFileList = [ordered]@{
+            file = $conversionDestinationFile
         }
-        $workingHandbrakeListCsv | Export-Csv -Path $workingHandbrakeFileCsv
+        $pendingConversionFileList | Export-Csv -Path $pendingConversionFile
     } else {
         $newRow = [ordered]@{
-            file = $handbrakeDestinationFile
+            file = $conversionDestinationFile
         }
-        $newRow | Export-Csv -Path $workingHandbrakeFileCsv -Append -Force
+        $newRow | Export-Csv -Path $pendingConversionFile -Append -Force
     }
 }
 
-Function RemoveFromWorkingHandbrakeList ($workingHandbrakeListCsv, $handbrakeDestinationFile) {
+Function RemoveFromPendingConversionFiles ($pendingConversionFileList, $conversionDestinationFile) {
     # remove the handbrakeDestinationFile from file
-    $newWorkingHandbrakeListCsv = $workingHandbrakeListCsv | Where-Object {$_.file -ne $handbrakeDestinationFile}
-    if (!$newWorkingHandbrakeListCsv){
-        Remove-Item -LiteralPath $workingHandbrakeFileCsv -Force
+    $newPendingConversionList = $pendingConversionFileList | Where-Object {$_.file -ne $conversionDestinationFile}
+    if (!$newPendingConversionList){
+        Remove-Item -LiteralPath $pendingConversionFile -Force
     } else {
-        $newWorkingHandbrakeListCsv | Export-Csv -Path $workingHandbrakeFileCsv
+        $newPendingConversionList | Export-Csv -Path $pendingConversionFile
     }
 }
 
 Function Get-NewOptions ($globalOptions , $workingFolder){
     # Set the variable from custom folder csv or from generic configuration
     $newOptions = [PSCustomObject]@{
-        handbrakePresetLocation = ''
-        handbrakePreset = ''
-        handbrakeCommand = ''
+        conversionCustomField1 = ''
+        conversionCustomField2 = ''
+        conversionCommand = ''
         mkvMergeLocation = ''
         mkvMergeCommand = ''
         runHandbrake = ''
         runMkvMerge = ''
     }    
     #region Build the $newOptions object merging the infos from csv and the global options json
-    if ($($workingFolder.handbrakePresetLocation)){
-        $newOptions.handbrakePresetLocation = $workingFolder.handbrakePresetLocation
+    if ($($workingFolder.conversionCustomField1)){
+        $newOptions.conversionCustomField1 = $workingFolder.conversionCustomField1
     } else {
-        $newOptions.handbrakePresetLocation = $globalOptions.handbrakeOptions.handbrakePresetLocation
+        $newOptions.conversionCustomField1 = $globalOptions.conversionOptions.conversionCustomField1
     }
-    if ($($workingFolder.handbrakePreset)){
-        $newOptions.handbrakePreset = $workingFolder.handbrakePreset
+    if ($($workingFolder.conversionCustomField2)){
+        $newOptions.conversionCustomField2 = $workingFolder.conversionCustomField2
     } else {
-        $newOptions.handbrakePreset = $globalOptions.handbrakeOptions.handbrakePreset
+        $newOptions.conversionCustomField2 = $globalOptions.conversionOptions.conversionCustomField2
     }
-    if ($($workingFolder.handbrakeCommand)){
-        $newOptions.handbrakeCommand = $workingFolder.handbrakeCommand
+    if ($($workingFolder.conversionCommand)){
+        $newOptions.conversionCommand = $workingFolder.conversionCommand
     } else {
-        $newOptions.handbrakeCommand = $globalOptions.handbrakeOptions.handbrakeCommand
+        $newOptions.conversionCommand = $globalOptions.conversionOptions.conversionCommand
     }
     if ($($workingFolder.mkvMergeLocation)){
         $newOptions.mkvMergeLocation = $workingFolder.mkvMergeLocation
@@ -306,9 +331,9 @@ Function Get-NewOptions ($globalOptions , $workingFolder){
     }
     #endregion
     LogWrite $INFO $("Options for current working folder")
-    LogWrite $INFO $("HandBrake. handbrakePreset        : $($newOptions.handbrakePreset)")
-    LogWrite $INFO $("HandBrake. handbrakePresetLocation: $($newOptions.handbrakePresetLocation)")
-    LogWrite $INFO $("HandBrake. handbrakeCommand       : $($newOptions.handbrakeCommand)")
+    LogWrite $INFO $("HandBrake. conversionCustomField2        : $($newOptions.conversionCustomField2)")
+    LogWrite $INFO $("HandBrake. conversionCustomField1: $($newOptions.conversionCustomField1)")
+    LogWrite $INFO $("HandBrake. conversionCommand       : $($newOptions.conversionCommand)")
     LogWrite $INFO $("MkvMerge . mkvMergeLocation       : $($newOptions.mkvMergeLocation)")
     LogWrite $INFO $("MkvMerge . mkvMergeCommand        : $($newOptions.mkvMergeCommand)")
     LogWrite $INFO $("MkvMerge . mkvMergeLocation       : $($newOptions.mkvMergeLocation)")
@@ -347,8 +372,8 @@ CreateFolder "$PSScriptRoot\log"
 # Set file paths
 $optionsFile = "$PSScriptRoot\configuration\options.json"
 $workingFolderListCsvFile = "$PSScriptRoot\configuration\Working Folder List.csv"
-$workingHandbrakeFileTxt = "$PSScriptRoot\Working Handbrake File List.txt"
-$workingHandbrakeFileCsv = "$PSScriptRoot\configuration\Working Handbrake File List.csv"
+$pendingConversionFile = "$PSScriptRoot\configuration\Pending Conversion File List.csv"
+$oldPendingConversionFile = "$PSScriptRoot\configuration\Working Handbrake File List.csv"
 $date = Get-Date -Format "yyyyMMdd"
 $logFile = "$PSScriptRoot\log\$($MyInvocation.MyCommand.Name.Replace('.ps1',''))_$date.log"
 
@@ -372,6 +397,8 @@ if ($abortExecution){
 # Set the working variables from options.json
 [bool]$debugLog = $globalOptions.runOptions.debugLog
 $waitSeconds = $globalOptions.runOptions.waitSecondsOption
+$keepLogForDays = $globalOptions.runOptions.keepLogForDays
+DeleteOldLogs
 $includeList = $globalOptions.FileFolderOptions.includeList
 $total = $includeList.count
 $counter = 0
@@ -424,28 +451,28 @@ foreach ($workingFolder in $workingFolderList){
         LogWrite $DEBUG $("Working on $($file.name)")
         
         #Check if handbrake was already launched (only if runHandbrake requested). If found jump to next file
-        $handbrakeDestinationFile = "$($file.DirectoryName)\$($file.BaseName)_handbrake.mkv"
+        $conversionDestinationFile = "$($file.DirectoryName)\$($file.BaseName)_handbrake.mkv"
         $foundWorkingHandbrake = $false
 
-        ### Check if $handbrakeDestinationFile was pending in previous runs. If not jump to next file
+        ### Check if $conversionDestinationFile was pending in previous runs. If not jump to next file
         if ($newOptions.runHandbrake){
-            $workingHandbrakeList = Get-WorkingHandbrakeList
+            $pendingConversionFileList = Get-PendingConversionFiles
             # Search if currently output file is in a previous run list. If yes, we can treat it as unfinished
             # if not and the file is already on disk, jump to next file
-            foreach ($workingHandbrake in $workingHandbrakeList){
-                if ($workingHandbrake.file -eq $handbrakeDestinationFile){
-                    LogWrite $DEBUG $("Handbrake file $handbrakeDestinationFile found from a previous launch. Retrying")
+            foreach ($workingHandbrake in $pendingConversionFileList){
+                if ($workingHandbrake.file -eq $conversionDestinationFile){
+                    LogWrite $DEBUG $("Handbrake file $conversionDestinationFile found from a previous launch. Retrying")
                     $foundWorkingHandbrake = $true
                     continue
                 } 
             }
             if (!$foundWorkingHandbrake){
                 [bool]$foundHandbrakeDestinationFile = $false
-                if ((Test-Path -LiteralPath $handbrakeDestinationFile -PathType leaf)){
-                    LogWrite $DEBUG $("Handbrake file $handbrakeDestinationFile found. Jumping to next file")
+                if ((Test-Path -LiteralPath $conversionDestinationFile -PathType leaf)){
+                    LogWrite $DEBUG $("Handbrake file $conversionDestinationFile found. Jumping to next file")
                     $foundHandbrakeDestinationFile = $true
                 } else {
-                    LogWrite $DEBUG $("Handbrake file $handbrakeDestinationFile not found")
+                    LogWrite $DEBUG $("Handbrake file $conversionDestinationFile not found")
                 }
                 if ($foundHandbrakeDestinationFile){
                     continue
@@ -467,27 +494,27 @@ foreach ($workingFolder in $workingFolderList){
 
         ### Exec conversion with HandBrakeCli
         LogWrite $INFO $("Working on $($file.FullName)")
-        $handbrakeNewcommand = $newOptions.handbrakeCommand
-        $handbrakeNewcommand = $handbrakeNewcommand.Replace("||handbrakePresetLocation||", $newOptions.handbrakePresetLocation)
-        $handbrakeNewcommand = $handbrakeNewcommand.Replace("||handbrakePreset||", $newOptions.handbrakePreset)
+        $handbrakeNewcommand = $newOptions.conversionCommand
+        $handbrakeNewcommand = $handbrakeNewcommand.Replace("||conversionCustomField1||", $newOptions.conversionCustomField1)
+        $handbrakeNewcommand = $handbrakeNewcommand.Replace("||conversionCustomField2||", $newOptions.conversionCustomField2)
         $handbrakeNewcommand = $handbrakeNewcommand.Replace("||inputFile||", $file)
-        $handbrakeNewcommand = $handbrakeNewcommand.Replace("||outputFile||", $handbrakeDestinationFile)
+        $handbrakeNewcommand = $handbrakeNewcommand.Replace("||outputFile||", $conversionDestinationFile)
 
         LogWrite $INFO $("Handbrake command: $handbrakeNewcommand")
         if ($newOptions.runHandbrake){
             if (!$foundWorkingHandbrake){
-                $workingHandbrakeList = Get-WorkingHandbrakeList
-                AddToWorkingHandbrakeList $workingHandbrakeList $handbrakeDestinationFile
-                LogWrite $DEBUG $("Handbrake file $handbrakeDestinationFile added to $workingHandbrakeFileCsv")
+                $pendingConversionFileList = Get-PendingConversionFiles
+                AddToPendingConversionFiles $pendingConversionFileList $conversionDestinationFile
+                LogWrite $DEBUG $("Handbrake file $conversionDestinationFile added to $pendingConversionFile")
             }
             Invoke-Expression $handbrakeNewcommand
             $handbrakeExitCode = $LASTEXITCODE
             LogWrite $INFO $("Handbrake rc: $handbrakeExitCode of $($file.name)")
             if ($handbrakeExitCode -eq 0){
-                $workingHandbrakeList = Get-WorkingHandbrakeList
-                LogWrite $DEBUG $("Handbrake file $handbrakeDestinationFile removed from $workingHandbrakeFileTxt")
-                RemoveFromWorkingHandbrakeList $workingHandbrakeList $handbrakeDestinationFile
-                LogWrite $DEBUG $("Handbrake file $handbrakeDestinationFile removed from $workingHandbrakeFileTxt")
+                $pendingConversionFileList = Get-PendingConversionFiles
+                LogWrite $DEBUG $("Handbrake file $conversionDestinationFile removed from $workingHandbrakeFileTxt")
+                RemoveFromPendingConversionFiles $pendingConversionFileList $conversionDestinationFile
+                LogWrite $DEBUG $("Handbrake file $conversionDestinationFile removed from $workingHandbrakeFileTxt")
             }
         } else {
             LogWrite $INFO $("Handbrake disabled")
@@ -500,7 +527,7 @@ foreach ($workingFolder in $workingFolderList){
         $mergeNewcommand = $mergeNewcommand.Replace("||mkvMergeLocation||", $newOptions.mkvMergeLocation)
         $mergeNewcommand = $mergeNewcommand.Replace("||outputFileName||", $outputfile)
         $mergeNewcommand = $mergeNewcommand.Replace("||inputFileName||", $inputfile)
-        $mergeNewcommand = $mergeNewcommand.Replace("||handbrakeFileName||", $handbrakeDestinationFile)
+        $mergeNewcommand = $mergeNewcommand.Replace("||handbrakeFileName||", $conversionDestinationFile)
 
         $outputfile =  $outputfile.Replace("\\","\")
 
