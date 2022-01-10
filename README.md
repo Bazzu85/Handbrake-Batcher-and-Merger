@@ -3,6 +3,14 @@
 This script allows the user to automate the Handbrake conversion and post conversion MkvMerge commands
 Just download the Handbrake Batcher and Merger.ps1 and launch it
 
+Future features and todo list:
+
+- [ ] Allow the user to customize if running a single or multiple instance of the script
+- [ ] Allow the user to customize the instance .exe to check. Now defaulting in the code to "Handbrake.Worker.exe", "HandBrakeCLI.exe", "powershell.exe" etc
+- [ ] Change the handbrake conversion part to a generic command part to allow the user to use other command line software (ex. FFMPEG)
+- [ ] Add a variable for the destination converted name append suffix defaulting now to "_handbrake"
+- [ ] Change some mkvmerge variables to more generic ones to let the user free to do more customization over the commands
+
 ## First Launch
 
 With the first launch the script generate the basic configuration files
