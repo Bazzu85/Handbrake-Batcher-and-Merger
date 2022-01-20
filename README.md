@@ -10,6 +10,7 @@ Future features and todo list:
 - [ ] Change the handbrake conversion part to a generic command part to allow the user to use other command line software (ex. FFMPEG)
 - [ ] Add a variable for the destination converted name append suffix defaulting now to "_handbrake"
 - [ ] Change some mkvmerge variables to more generic ones to let the user free to do more customization over the commands
+- [x] Add a new variable to customize how many day keep the logs
 
 ## First Launch
 
