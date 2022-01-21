@@ -550,11 +550,11 @@ foreach ($workingFolder in $workingFolderList){
                 if ((Test-Path -LiteralPath $newOutFile -PathType leaf)){
                     LogWrite $INFO $("Destination file $newOutFile already exists. Skipping move")
                 } else {
-                    if(!(Test-Path ($file.DirectoryName + "\1ok")))
+                    if(!(Test-Path -LiteralPath $newOutFile))
                     {
-                        New-Item -Path ($file.DirectoryName + "\1ok") -ItemType Directory -Force
+                        New-Item -Path (Split-Path -Path $newOutFile) -ItemType Directory -Force
                     }
-                    Move-Item -LiteralPath $outputfile -Destination ($newOutFile) #-Force
+                    Move-Item -LiteralPath $outputfile -Destination ($newOutFile) -Force
                     # if directory is empty, delete it
                     $directoryInfo = Get-ChildItem ($file.DirectoryName + "\1tmp") | Measure-Object
                     if ($directoryInfo.count -eq 0){
