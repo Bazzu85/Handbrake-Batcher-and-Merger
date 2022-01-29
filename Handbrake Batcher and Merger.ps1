@@ -512,9 +512,10 @@ foreach ($workingFolder in $workingFolderList){
             LogWrite $INFO $("Handbrake rc: $handbrakeExitCode of $($file.name)")
             if ($handbrakeExitCode -eq 0){
                 $pendingConversionFileList = Get-PendingConversionFiles
-                LogWrite $DEBUG $("Handbrake file $conversionDestinationFile removed from $workingHandbrakeFileTxt")
                 RemoveFromPendingConversionFiles $pendingConversionFileList $conversionDestinationFile
                 LogWrite $DEBUG $("Handbrake file $conversionDestinationFile removed from $workingHandbrakeFileTxt")
+            } else {
+                continue #jump to next item in foreach
             }
         } else {
             LogWrite $INFO $("Handbrake disabled")
@@ -558,7 +559,7 @@ foreach ($workingFolder in $workingFolderList){
                     # if directory is empty, delete it
                     $directoryInfo = Get-ChildItem ($file.DirectoryName + "\1tmp") | Measure-Object
                     if ($directoryInfo.count -eq 0){
-                        Remove-Item -LiteralPath ($file.DirectoryName + "\1tmp")
+                        Remove-Item -LiteralPath ($file.DirectoryName + "\1tmp") -Force
                     }
                     LogWrite $DEBUG $("Moved $outputfile to $newOutFile")
                 }
